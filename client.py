@@ -15,7 +15,19 @@ firebase = pyrebase.initialize_app(config)
 
 cloud = firebase.storage()
 
-cloud.child("test/test.txt").put("testujemy.txt")
-
-cloud.child("test/test.txt").download("downtest.txt")
+while(True):
+    text = input("upload or download?\n")
+    if(text == "upload"):
+        path_on_cloud = input("What path to upload?\n")
+        print(path_on_cloud)
+        path_on_device = input("Which file to upload?\n")
+        cloud.child("test2.txt").put(path_on_device)
+        print("done")
+    elif(text == "download"):
+        path_on_cloud = input("Which file to download?\n")
+        path_on_device = input("Where to download?\n")
+        cloud.child(path_on_cloud).download(path_on_device)
+        print("done")
+    else:
+        print("Error")
 
