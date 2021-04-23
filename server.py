@@ -5,6 +5,7 @@ import socket
 from _thread import *
 import request_types
 import re
+import ssl
 PORT = 5000
 HOST = '127.0.0.1'
 
@@ -100,11 +101,9 @@ def threaded_client(connection):
             user_email = user_info['users'][0]['email']
             key = get_key(groupid, user_email)
             if key != 0:
-                encrypted_key = ''
-                response_str = chr(request_types.GET_KEY_REQUEST)
-                response_str += '\x01'
-                #add encrypted key to response
-                connection.sendall(response_str.encode('utf-8'))
+                response = bytes([request_types.GET_KEY_REQUEST, 1])
+                response += bytes(key)
+                connection.sendall(response)
             else:
                 response_str = chr(request_types.GET_KEY_REQUEST)
                 response_str += '\x00User not in that group.'
@@ -129,7 +128,12 @@ firebase = pyrebase.initialize_app(config)
 auth = firebase.auth()
 admin = auth.sign_in_with_email_and_password("ogoreka@tcd.ie", "123456")
 
-server = socket.socket()
+master_key = open("key.bin", "rb").read()
+
+context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+context.load_cert_chain(certfile = 'cert.pem', keyfile = 'cert.pem')
+context.load_verify_locations(cafile = 'cert.pem')
+server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 try:
     server.bind((HOST, PORT))
 except socket.error as err:
@@ -138,7 +142,8 @@ print('waiting')
 server.listen(5)
 while True:
     client, address = server.accept()
+    connection = context.wrap_socket(client, server_side = True)
     print('new connection')
-    start_new_thread(threaded_client, (client, ))
+    start_new_thread(threaded_client, (connection, ))
 
 server.close()

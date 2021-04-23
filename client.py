@@ -3,8 +3,10 @@ import json
 import os
 import socket
 import request_types
+import ssl
 from requests.exceptions import HTTPError
 from Cryptodome.Cipher import AES
+from Cryptodome.Random import get_random_bytes
 
 HOST = '127.0.0.1'
 PORT = 5000
@@ -57,7 +59,8 @@ def decrypt_file(filepath):
 
 
 def create_group(groupid):
-    client_socket = socket.socket()
+    context = ssl.create_default_context(cafile = 'cert.pem')
+    client_socket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname = "Adam")
     try:
         client_socket.connect((HOST, PORT))
     except socket.error as err:
@@ -74,7 +77,8 @@ def create_group(groupid):
 
 
 def add_user(groupid, user_to_add):
-    client_socket = socket.socket()
+    context = ssl.create_default_context(cafile = 'cert.pem')
+    client_socket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname = "Adam")
     try:
         client_socket.connect((HOST, PORT))
     except socket.error as err:
@@ -94,7 +98,8 @@ def add_user(groupid, user_to_add):
 
 
 def get_key(groupid):
-    client_socket = socket.socket()
+    context = ssl.create_default_context(cafile = 'cert.pem')
+    client_socket = context.wrap_socket(socket.socket(socket.AF_INET, socket.SOCK_STREAM), server_hostname = "Adam")
     try:
         client_socket.connect((HOST, PORT))
     except socket.error as err:
@@ -107,9 +112,8 @@ def get_key(groupid):
     request = message_str.encode('utf-8')
     client_socket.sendall(request)
     response = client_socket.recv(2048)
-    print(response.decode('utf-8'))
-    if response[1] == '\1':
-        return response[2:].decode('utf-8')
+    if response[1] == 1:
+        return response[2:]
     else:
         return 0
 
@@ -128,6 +132,9 @@ config = {
 firebase = pyrebase.initialize_app(config)
 
 cloud = firebase.storage()
+
+
+
 key = b''
 last_group = ''
 user = None
@@ -139,6 +146,8 @@ while user is None:
         user = create_account()
     else:
         print("Try again")
+
+#cloud.child("test.txt").download("xd.txt", user['idToken'])
 
 while True:
     text = input("Manage groups or files?\n")
@@ -155,7 +164,6 @@ while True:
         group_name = input("What group?\n")
         if group_name != last_group:
             key = get_key(group_name)
-        print(key)
         if key != 0:
             last_group = group_name
             input2 = input("Upload or download?\n")
